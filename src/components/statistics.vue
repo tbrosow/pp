@@ -114,6 +114,7 @@
                 for (let key in sin[0]) {
                     console.log(key)
                     this.curRecord[key] = sin[0][key]
+
                 }
             },
             changeSearchCondition: function() {
