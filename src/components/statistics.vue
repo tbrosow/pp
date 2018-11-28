@@ -2,10 +2,20 @@
 
     <div id="" class="listView">
         <b-alert show>{{ records }} Records </b-alert>
-        <input type="text" class="form-control" id="query" @change="changeSearchCondition"
-               aria-describedby="emailHelp" placeholder="Enter query"  v-model="queryText">
-        <button v-on:click="search">Search</button>
-        <button v-on:click="clear">Clear</button>
+
+
+
+        <b-container class="bv-example-row">
+
+            <b-row>
+                <b-col><input type="text" class="form-control" id="query" @change="changeSearchCondition"
+                              aria-describedby="emailHelp" placeholder="Enter query"  v-model="queryText"></b-col>
+                <b-col cols="12" md="auto"></b-col>
+                <b-col col lg="2"><button v-on:click="search">Search</button>
+                    <button v-on:click="clear">Clear</button></b-col>
+            </b-row>
+        </b-container>
+
         <table class="table">
             <thead>
             <tr>
@@ -87,7 +97,7 @@
                     query: this.queryText
                 }
 
-            }).then(response => (this.items = response.data, this.records = this.items.length));
+            }).then(response => (JSON.stringify(response), this.items = response.data, this.records = this.items.length));
 
         },
         methods: {
@@ -105,17 +115,30 @@
 
                 }).then(response => (
                     this.curRec = response.data,
-                        this.parseResponse(response.data)
+                        this.search()
                 ));
             },
             parseResponse: function(sin) {
-                console.log("PR"+JSON.stringify(sin))
+                console.log("HIT1x: " + " " + this.items.length)
+                console.log("parseResponse1: " + JSON.stringify(sin))
                 this.curRecord = {}
                 for (let key in sin[0]) {
                     console.log(key)
                     this.curRecord[key] = sin[0][key]
-
                 }
+                let rec = this.curRecord;
+                let items = this.items
+                items.forEach(function (item) {
+                    console.log("HIT1: " + item._id + " " + items.length)
+                    console.log("parseResponse2: " + JSON.stringify(rec))
+                    console.log("HIT2: " + item._id + " " + items.length)
+                    console.log("HIT3: " + item._id + " " + item._id)
+                    if (item._id == sin[0]._id) {
+                        console.log("HIT3")
+                        item = rec
+                    }
+                })
+                this.items = items;
             },
             changeSearchCondition: function() {
                 console.log("CSC:" + this.queryText)
@@ -167,7 +190,11 @@
                         query: this.query
                     }
 
-                }).then(response => (this.items = response.data, this.records = this.items.length));
+                }).then(response => (
+                    console.log("RESP"+JSON.stringify(response)),
+                        this.items = response.data,
+                        this.records = this.items.length
+                ));
 
 
             }

@@ -19,7 +19,13 @@ router.put('*', function (req, res, next) {
             res.send({updated:false, error:error})
         } else {
             console.log("/updateGame: " + JSON.stringify(record))
-            res.send({updated:true})
+            User.find({_id: req.body._id}, function(err, results) {
+                if (error) {
+                    console.log(error);
+                }
+                res.send(results)
+            })
+
         }
     });
 });
@@ -199,6 +205,7 @@ router.get('/user', function (req, res, next) {
     //     console.log("/: " + JSON.stringify(user))
     // });
     User.find(query, function(err, results) {
+        console.log("/user: " + JSON.stringify(results))
         res.send(results)
 
     });
