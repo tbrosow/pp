@@ -8,7 +8,10 @@
 </template>
 
 <script>
+
     import statistics from './components/statistics.vue'
+
+
 export default {
   name: 'app',
     components: {statistics},
@@ -18,6 +21,8 @@ export default {
     }
   }
 }
+
+
 </script>
 
 <style lang="scss">

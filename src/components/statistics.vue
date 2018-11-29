@@ -1,17 +1,22 @@
 <template>
 
     <div id="" class="listView">
-        <b-alert show>{{ records }} Records </b-alert>
+        <div class="alert alert-dark" role="alert">
+        List {{ collection }}: {{ records }} Records
+        </div>
+        <!--<b-alert show>{{ listLayout }} listLayout </b-alert>-->
 
 
-
+        <!--<list-edit v-bind:data="data.collection"></list-edit>-->
+        <list-edit :collection='collection'></list-edit>
         <b-container class="bv-example-row">
 
             <b-row>
                 <b-col><input type="text" class="form-control" id="query" @change="changeSearchCondition"
                               aria-describedby="emailHelp" placeholder="Enter query"  v-model="queryText"></b-col>
                 <b-col cols="12" md="auto"></b-col>
-                <b-col col lg="2"><button v-on:click="search">Search</button>
+                <b-col col lg="2">
+                    <button v-on:click="search">Search</button>
                     <button v-on:click="clear">Clear</button></b-col>
             </b-row>
         </b-container>
@@ -19,22 +24,25 @@
         <table class="table">
             <thead>
             <tr>
-                <th scope="col">ID</th>
-                <th scope="col">Name</th>
-                <th scope="col">Email</th>
-                <th scope="col">Active</th>
+                <th v-for="fields in listLayout.fields" scope="col">{{ fields.label }}</th>
             </tr>
             </thead>
             <tbody>
             <tr v-for="item in items">
-                <td v-on:click="addQuery('_id', item._id, item._id)" scope="row">{{ item._id }}</td>
-                <td @click="addQuery('name', item._id, item.name)">{{ item.name }}</td>
-                <td @click="addQuery('email', item._id, item.email)">{{ item.email }}</td>
-                <td @click="addQuery('active', item._id, item.active)">{{ item.active }}</td>
+
+
+                <td v-for="fields in listLayout.fields"  v-on:click="addQuery(fields['name'], item._id, item[fields['name']])" scope="row">
+                    <button v-if="fields['datatype'] == 'Checkbox' && item[fields['name']] == true" type="button" class="btn btn-sm btn-outline-success">True</button>
+                    <button v-if="fields['datatype'] == 'Checkbox' && item[fields['name']] != true" type="button" class="btn btn-sm btn-outline-secondary">False</button>
+                    <div v-if="fields['datatype'] == 'Text'">{{ item[fields["name"]] }}</div>
+                    <button v-if="fields['datatype'] == 'ID'" type="button" class="btn btn-sm btn-outline-info">Open</button>
+
+                </td>
             </tr>
             </tbody>
         </table>
-        <b-alert show>Default Alert</b-alert>
+
+         <b-alert show>Form Section</b-alert>
 
         <hr/>
         <form>
@@ -73,23 +81,47 @@
 <script>
     const axios = require('axios');
 
+    import listEdit from './listEdit.vue'
+    import eventbus from '../eventbus'
+
     export default {
         name: "statistics",
+        components: {listEdit},
+
         data: function() {
             return {
                 name:"statistics",
+                collection: "user",
                 counter:0,
                 items: { message:[{_id:1234}]},
-                list: [],
+                listLayout: [],
                 query: {},
                 queryText: "",
                 records: 0,
-                curRecord: {}
+                curRecord: {},
 
             }
         },
+        created() {
+
+        },
         mounted() {
             console.log("mounterd")
+            eventbus.$on("LIST_RELOAD", data => {
+                this.xxx = "EVENT received"
+                this.listLayout = [{dd:123}]
+                axios({
+                    method:'get',
+                    url:'http://localhost:8089/query',
+                    params: {
+                        collection: "ListLayout",
+                        query: JSON.stringify({coll:"user"})
+                    }
+                }).then(response => (
+                    this.listLayout = response.data[0])
+                );
+            })
+
             axios({
                 method:'get',
                 url:'http://localhost:8089/user',
@@ -97,7 +129,23 @@
                     query: this.queryText
                 }
 
-            }).then(response => (JSON.stringify(response), this.items = response.data, this.records = this.items.length));
+            }).then(response => (
+                this.items = response.data.sort(function(a, b){return a.order-b.order}),
+                this.records = this.items.length)
+            );
+
+            axios({
+                method:'get',
+                url:'http://localhost:8089/query',
+                params: {
+                    collection: "ListLayout",
+                    query: JSON.stringify({coll:"user"})
+                }
+
+            }).then(response => (
+                // console.log("AJAX RESP: " + JSON.stringify(response)),
+                this.listLayout = response.data[0])
+            );
 
         },
         methods: {
@@ -119,8 +167,7 @@
                 ));
             },
             parseResponse: function(sin) {
-                console.log("HIT1x: " + " " + this.items.length)
-                console.log("parseResponse1: " + JSON.stringify(sin))
+                console.log("parseResponse: " + JSON.stringify(sin))
                 this.curRecord = {}
                 for (let key in sin[0]) {
                     console.log(key)

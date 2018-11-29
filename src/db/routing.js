@@ -1,6 +1,8 @@
 var express = require('express');
 var router = express.Router();
+var mongoose = require('mongoose');
 var User = require('./user');
+var ListLayout = require('./ListLayout');
 
 router.options
 // router.post('*', function (req, res, next) {
@@ -11,7 +13,7 @@ router.options
 //     res.setHeader('Access-Control-Allow-Credentials', true); // If neededres.send('upd')
 // });
 
-router.put('*', function (req, res, next) {
+router.put('2222', function (req, res, next) {
     console.log("/PUT USER: " + JSON.stringify(req.body))
     User.update({_id: req.body._id}, req.body, function (error, record) {
         if (error) {
@@ -30,6 +32,28 @@ router.put('*', function (req, res, next) {
     });
 });
 
+router.put('/save', function (req, res, next) {
+    console.log("/save: ")
+    console.log("/collection: " + req.query.collection)
+    console.log("/id: " + req.body._id)
+    console.log("/save: " + JSON.stringify(req.body))
+    mongoose.model(req.query.collection).update({_id: req.body._id}, req.body, function (error, record) {
+        if (error) {
+            console.log(error);
+            res.send({updated:false, error:error})
+        } else {
+            console.log("/save: " + JSON.stringify(record))
+            mongoose.model(req.query.collection).find({_id: req.body._id}, function(err, results) {
+                if (error) {
+                    console.log(error);
+                }
+                res.send(results)
+            })
+
+        }
+    })
+});
+
 router.post('/user', function (req, res, next) {
     console.log("/POST USER: " )
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -38,6 +62,54 @@ router.post('/user', function (req, res, next) {
     res.setHeader('Access-Control-Allow-Credentials', true); // If needed
     console.log("/POST USER: " + JSON.stringify(req.body))
     res.send('upd1')
+});
+
+router.get('/query', function (req, res, next) {
+    console.log("/params: " + req.query.collection)
+    let query = {};
+    if (req.query.query) {
+        try {
+            query = JSON.parse(req.query.query)
+            console.log("/query: " + JSON.stringify(query))
+        } catch (e) {
+            res.send({error: true, msg: e})
+        }
+    }
+    if (req.query.collection) {
+        mongoose.model(req.query.collection).find(query, function (error, record) {
+            if (error) {
+                console.log(error)
+                res.send({error: true, msg: error})
+            } else {
+                console.log("/ListLayout: " + JSON.stringify(record, null, 2))
+                res.send(record)
+            }
+        })
+    } else {
+        res.send({error: true})
+    }
+});
+
+router.get('/test', function (req, res, next) {
+
+    mongoose.model('ListLayout').find({}, function (error, record) {
+        if (error)
+            console.log(error)
+        console.log("/ListLayout: " + JSON.stringify(record))
+    })
+
+    let fields = [
+        {name:"email", label:"Email Address", order:1, datatype: "Text"},
+        {name:"name", label:"Name", order:2, datatype: "Text"},
+        {name:"active", label:"Active", order:3, datatype: "Checkbox"},
+        {name:"_id", label:"ID", order:4, datatype: "ID"}
+    ];
+    ListLayout.create({coll:"user", fields:fields}, function (error, record) {
+        if (error)
+            console.log(error)
+        console.log("/: " + JSON.stringify(record))
+        res.send(JSON.stringify(record))
+    });
 });
 
 router.get('/user', function (req, res, next) {
