@@ -9,12 +9,16 @@
 
 <script>
 
-    import statistics from './components/statistics.vue'
-
+import statistics from './components/statistics.vue'
+import formBuilder from './components/formBuilder.vue'
+import UIEvent from './components/UI-Event.vue'
+import listEdit from './components/listEdit.vue'
 
 export default {
   name: 'app',
-    components: {statistics},
+    components: {
+      statistics, formBuilder, UIEvent, listEdit
+    },
   data () {
     return {
       msg: 'Welcome to Your Vue.js App'

@@ -26,7 +26,7 @@ app.use(bodyParser.urlencoded({ extended: false }));
 
 
 const logRequestStart = (req, res, next) => {
-    console.info(`OOO ${req.method} ${req.originalUrl}`)
+    console.info(`TRACE ${req.method} ${req.originalUrl}`)
     next()
 }
 

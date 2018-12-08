@@ -1,19 +1,20 @@
 var mongoose = require('mongoose');
+var dictionary = require('./dictionary')
 
-var Field = new mongoose.Schema({
-    name: {
-        type: String
-    },
-    label: {
-        type: String
-    },
-    datatype: {
-        type: String
-    },
-    order: {
-        type: Number
-    }
-});
+// var Field = new mongoose.Schema({
+//     name: {
+//         type: String
+//     },
+//     label: {
+//         type: String
+//     },
+//     dataType: {
+//         type: String
+//     },
+//     order: {
+//         type: Number
+//     }
+// });
 
 var Schema = new mongoose.Schema({
     coll: {
@@ -22,10 +23,24 @@ var Schema = new mongoose.Schema({
         required: true,
         trim: true
     },
-    // fields: {
-    //     type: Array
-    // },
-    fields: [Field]
+    view: {
+        type: String,
+        default: 'default'
+    },
+    fields: [
+        {
+            order: {
+                type: Number
+            },
+            active: {
+                type: Boolean
+            },
+            ref: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "dictionary"
+            }
+        }
+    ]
 });
 
 var ListLayout = mongoose.model('ListLayout', Schema);

@@ -1,5 +1,7 @@
 <template>
-    <div class="listEditView">
+
+    <div class="listEditView1">
+
         <img v-b-modal.modal1 @click="openModal()" src="../assets/icons.24/cog.png"/>
 
         <!-- Modal Component -->
@@ -42,7 +44,7 @@
 
 <script>
     const axios = require('axios');
-    import eventbus from '../eventbus.js'
+    import { Eventbus } from '../eventbus.js'
 
     export default {
         name: "listEdit",
@@ -74,8 +76,8 @@
                     }
 
                 }).then(response => (
-
-                    eventbus.$emit('LIST_RELOAD',{collection:this.collection})
+                    // console.log("")
+                    Eventbus.$emit('LIST_RELOAD',{collection:this.collection})
                 ));
 
 

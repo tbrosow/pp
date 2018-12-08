@@ -15,7 +15,9 @@ module.exports = {
         test: /\.vue$/,
         loader: 'vue-loader',
         options: {
-          loaders: {
+
+          loaders:
+              {
             // Since sass-loader (weirdly) has SCSS as its default parse mode, we map
             // the "scss" and "sass" values for the lang attribute to the right configs here.
             // other preprocessors should work out of the box, no loader config like this necessary.
@@ -30,13 +32,20 @@ module.exports = {
         loader: 'babel-loader',
         exclude: /node_modules/
       },
-      {
-        test: /\.css$/,
-        use: ExtractTextPlugin.extract({
-          fallback: "style-loader",
-          use: "css-loader"
-        })
-      },
+        {
+            test: /\.css$/,
+            use: ExtractTextPlugin.extract({
+                fallback: "style-loader",
+                use: "css-loader"
+            })
+        },
+        {
+            test: /\.scss$/,
+            use: ExtractTextPlugin.extract({
+                fallback: "style-loader",
+                use: "vue-style-loader!css-loader!sass-loader"
+            })
+        },
       {
         test: /\.(png|jpg|gif|svg)$/,
         loader: 'file-loader',
