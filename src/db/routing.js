@@ -1,7 +1,7 @@
 var mongoose = require('mongoose');
 var express = require('express');
 var router = express.Router();
-var User = require('./user');
+var user = require('./user');
 var ListLayout = require('./ListLayout');
 var FormLayout = require('./FormLayout');
 var FormMenu = require('./FormMenu');
@@ -141,7 +141,7 @@ router.get('/query', function (req, res, next) {
     console.log("/query: " + JSON.stringify(query, null, 4))
 
     let myModel;
-    console.log("XXXX2 Models: " + JSON.stringify(models));
+    console.log("Models: " + JSON.stringify(models));
 
     console.log("/query collection: [" + req.query.collection + "] params: " + req.query.query)
     let schemaName = req.query.collection;
@@ -159,9 +159,15 @@ router.get('/query', function (req, res, next) {
 
             } else {
 
-                if (records[0].coll == "db_collection" || records[0].coll == "dictionary") {
+                if (records[0].coll === "db_collection") {
                     console.log("NO SCHEMA - use Schema: db_collection");
                     myModel = db_collection;
+                } else if (records[0].coll === "dictionary") {
+                    console.log("NO SCHEMA - use Schema: dictionary");
+                    myModel = dictionary;
+                } else if (records[0].coll === "user") {
+                    console.log("NO SCHEMA - use Schema: user");
+                    myModel = user;
                 } else {
                     console.log("NO SCHEMA - load Schema: " + records[0]._schema);
                     myModel = setSchema(JSON.parse(records[0]._schema), schemaName);
@@ -171,9 +177,9 @@ router.get('/query', function (req, res, next) {
             try {
                 if (req.query.collection) {
                     console.log(schemaName + ' myModel' + JSON.stringify(myModel.schema.tree, null, 2));
-                    core.create({}, function (error, record) {
-                        myModel.create({core:record,number:new Date()})
-                    })
+                    // core.create({}, function (error, record) {
+                    //     myModel.create({core:record,number:new Date()})
+                    // })
 
                     myModel.count(query, function (error, count) {
                         console.log(error)
@@ -670,6 +676,7 @@ router.get('/dictionary', function (req, res, next) {
                                                 dataType: dic.dataType,
                                                 dataSubType: dic.dataSubType,
                                                 reference: dic.reference,
+                                                reference_query: dic.reference_query,
                                                 coll: dic.coll,
                                                 name: dic.name,
                                                 label: dic.label,

@@ -9,6 +9,7 @@ var db_collection = require('../db/db');
 var ListLayout = require('../db/ListLayout')
 var FormLayout = require('../db/FormLayout');
 var FormMenu = require('../db/FormMenu');
+var user = require('../db/user');
 var group = require('../db/group');
 var task = require('../db/task');
 var sequence = require('../db/sequence');
@@ -137,6 +138,15 @@ function load_collections() {
 function load_dictionary() {
     let schema = "dictionary";
 
+    let users = [
+        {
+            "user_name": "tbrosow",
+            "first_name": "Torsten",
+            "last_name": "Brosow",
+            "email": "torsten.brosow@gmail.com"
+        }
+
+    ]
     let menus = [
         {
             coll:"dictionary", field: "field_type",
@@ -167,6 +177,8 @@ function load_dictionary() {
         { coll: "task", dataType: "Text",        dataSubType: "number",   reference: "",         default: "4", display: false, name: "priority",   label: "Priority"},
 
         { coll: "task", dataType: "Menu",        dataSubType: "text",     reference: "",         default: "not_requested", display: false, name: "approval_requested",   label: "Approval requested"},
+        { coll: "task", dataType: "Reference",   dataSubType: "",         reference: "user",     reference_query: {last_name: '{{query}}'}, default: "", display: false, readonly: true, name: "assignee", label: "Assignee"},
+
 
         { coll: "task", dataType: "Text",        dataSubType: "datetime", reference: "",         default: "", display: false, readonly: true, name: "core.created", label: "Created"},
         { coll: "task", dataType: "Text",        dataSubType: "datetime", reference: "",         default: "", display: false, readonly: true, name: "core.updated", label: "Updated"},
@@ -231,6 +243,18 @@ function load_dictionary() {
 
         dics.forEach(function (dic) {
             dictionary.create(dic, function (error, record) {
+                if (error) console.log("ERR" + error);
+                console.log(JSON.stringify(record));
+
+            })
+        })
+    })
+    user.remove({}, function (error, results) {
+        if (error) console.log("ERR" + error);
+        console.log(JSON.stringify(results));
+
+        users.forEach(function (userrec) {
+            user.create(userrec, function (error, record) {
                 if (error) console.log("ERR" + error);
                 console.log(JSON.stringify(record));
 

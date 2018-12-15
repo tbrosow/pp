@@ -29,17 +29,17 @@ var Schema = new mongoose.Schema({
     },
     name: {
         type: String,
-        required: true,
+        required: false,
         trim: true
     },
     first_name: {
         type: String,
-        required: true,
+        required: false,
         trim: true
     },
     last_name: {
         type: String,
-        required: true,
+        required: false,
         trim: true
     },
     user_type: {
@@ -50,13 +50,13 @@ var Schema = new mongoose.Schema({
     },
     email: {
         type: String,
-        required: true,
+        required: false,
         trim: true
     },
     active: {
         type: Boolean,
         required: true,
-        trim: true
+        default: true
     }
 });
 

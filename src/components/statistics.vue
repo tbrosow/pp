@@ -73,7 +73,7 @@
                                         size="sm"
                                         v-if="field.dataType=='Reference' && set.field == field.name"
                                         v-model="refField[field.name]"
-                                        @input="reloadReference( field.name, refField[field.name], set.reference)"
+                                        @input="reloadReference( field.name, refField[field.name], set.reference, field.reference_query)"
                                         @hit="refFieldList[s_index].value = $event"
                                         :data="refFieldList[s_index].data"
                                         :serializer="item => item.name"
@@ -510,17 +510,7 @@
                 console.log("setValue: v" + JSON.stringify(value))
                 _.set(this.curRecord, fn, value)
 
-                // var val = _.get(this.curRecord, type, 'nf')
 
-                // console.log('1 '+$('#'+fn).val())
-                // console.log($('#core.updated').val())
-                // console.log($('#number').val())
-                //
-                //
-                // var val = _.get(this.curRecord, fn, 'nf')
-                //console.log("setValue: " + val);
-
-                // return val;
             },
             getReferenceValue: function(item, fn) {
                 console.log("getReferenceValue: " + fn + " " + JSON.stringify(item))
@@ -545,21 +535,27 @@
                 })
             },
 
-            // clearAlarms: function() {
-            //     this.closeAlert('success')
-            // },
-            // closeAlert: function(_alert) {
-            //     this.alert[_alert].show = false
-            // },
+            reloadReference: _.debounce((d,e,f,rq) => {
+                console.log('reloadReference field:' + d + " Value: " + e + " Ref: " + f);
 
-            reloadReference: _.debounce((d,e,f) => {
-                console.log('reloadReference field:' + d + " Value: " + e + " Ref: " + f)
+                console.log('reloadReference RQ' + JSON.stringify(rq));
+
+                let t = this;
+
+                _.forEach(rq, function (value, key) {
+                    console.log('reloadReference'+key+value);
+                    value = value.replace(/\{\{query\}\}/i, e);
+                    console.log('reloadReference'+key+value);
+                    rq[key] = value;
+                })
+                             // console.log('reloadReference RQ' + this.fieldlist[d].reference_query);
+                console.log('reloadReference RQ' + JSON.stringify(rq));
 
                 axios({
                     method:'get',
                     url:'http://localhost:8089/query',
                     params: {
-                        wquery: {name: e},
+                        wquery: rq,
                         collection: f
                         // limit: paging.limit,
                         // skip: paging.skip

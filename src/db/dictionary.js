@@ -15,6 +15,11 @@ var Schema = new mongoose.Schema({
         default: "",
         required: false
     },
+    reference_query: {
+        type: Object,
+        default: "",
+        required: false
+    },
     name: {
         type: String,
         required: true
