@@ -2,6 +2,19 @@
     <!--<vue-grid-layout>123</vue-grid-layout>-->
     <div>
         <u-i-event :alert="alert"></u-i-event>
+        <div>
+            <b-btn v-b-modal.modal1>New Section</b-btn>
+
+            <!-- Modal Component -->
+            <b-modal id="modal1" title="Form Builder"
+                     @ok="addSection"
+            >
+                <p class="my-4">Add a new form section</p>
+                <b-form-input v-model="newSection"
+                              type="text"
+                              placeholder="Enter your section name"></b-form-input>
+            </b-modal>
+        </div>
         <div v-for="(row, rindex) in layout.layouts">
             <grid-layout
                     :layout="row"
@@ -75,13 +88,13 @@
     import _ from 'lodash'
     var debounce = require('debounce');
 
-    import listEdit from './listEdit.vue'
-    import formElement from './formElement.vue'
-    import formLabel from './formLabel.vue'
+    // import listEdit from './listEdit.vue'
+    // import formElement from './formElement.vue'
+    // import formLabel from './formLabel.vue'
     import { EventBus } from '../eventbus.js'
     // import coolSelect  from 'vue-cool-select'
     // import SwitchTheme from './SwitchTheme.vue'
-    import VueBootstrapTypeahead from 'vue-bootstrap-typeahead'
+    // import VueBootstrapTypeahead from 'vue-bootstrap-typeahead'
     import VueJsonPretty from 'vue-json-pretty'
 
 
@@ -96,6 +109,7 @@
         components: {GridLayout, GridItem, VueJsonPretty, UIEvent },
         data: function () {
             return {
+                newSection: "",
                 alert: {
                     success: {
                         show: false,
@@ -186,7 +200,20 @@
 
         },
         methods: {
-
+            addSection: function() {
+                this.layout.layouts[0].push(
+                    {
+                        x:3,
+                        y:1,
+                        w:1,
+                        h:2,
+                        i:this.newSection,
+                        style:this.style.section,
+                        section:true,
+                        id:"",
+                        row:0
+                    })
+            },
             closeAlert: function(_alert) {
                 // this.alert[_alert].show = false
             },
@@ -294,7 +321,10 @@
                     col3 = this.genColumn(0, col3)
                     columns.push(col3)
                 }
-                this.formLayout.rows[row] = {index:row, columns:columns};
+                this.formLayout.rows = [];
+                this.formLayout.rows[0] = {index:row, columns:columns};
+
+                console.log("SAVE: " + JSON.stringify(this.formLayout,null,4));
 
                 axios({
                     data: this.formLayout,
@@ -315,6 +345,9 @@
                 console.log("parseDictionary" +JSON.stringify(response,null,4))
                 console.log("parseDictionary" +JSON.stringify(this.layout,null,4))
                 this.formLayout = response.data.form
+
+
+
 
                 for (let idx1 = 0; idx1 < this.formLayout.rows.length; idx1++) {
                     let row = this.formLayout.rows[idx1];
@@ -349,8 +382,18 @@
                             }
                         }
                     }
+                    let y = 0;
+                    let t = this;
+                    response.data.dictionary.forEach(function(dic) {
+                        console.log(dic.name)
+
+                        layout.push({x:3, y:++y, w:1, h:2, i:dic.label + " [" + dic.name + "]", style: t.style.field, section:false, id:dic._id, row:4})
+                    })
                     this.layout.layouts.push(layout)
                 }
+
+
+
                 console.log("parseDictionary" +JSON.stringify(this.layout,null,4))
 
                 this.formLayout.rows.forEach(function (row) {

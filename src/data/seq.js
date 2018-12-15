@@ -5,6 +5,7 @@ var MongoStore = require('connect-mongo')(session);
 var await = require('asyncwait');
 
 var dictionary = require('../db/dictionary');
+var db_collection = require('../db/db');
 var ListLayout = require('../db/ListLayout')
 var FormLayout = require('../db/FormLayout');
 var FormMenu = require('../db/FormMenu');
@@ -12,6 +13,232 @@ var group = require('../db/group');
 var task = require('../db/task');
 var sequence = require('../db/sequence');
 var menu = require('../db/FormMenu');
+
+function createSchema(schemaName) {
+    let schema = {};
+    var Schema = mongoose.Schema;
+    console.log('createSchema: ' + schemaName);
+
+
+    dictionary.find({coll:schemaName}, function (error, records) {
+        if (error) console.log(error)
+        console.log(records)
+        records.forEach(function(element) {
+            if (element.field_type == "Field") {
+                schema[element.name] = {type: String}
+                if (element.dataType === 'Checkbox') {
+                    schema[element.name].type = "Boolean";
+                    schema[element.name].default = element.default==="0"?0:1;
+                }
+                if (element.dataType === 'Text') {
+                    if (element.dataSubType === "datetime") {
+                        schema[element.name].type = "Date";
+                    }
+                    if (element.dataSubType === "number") {
+                        schema[element.name].type = "Number";
+                    }
+                    if (element.dataSubType === "text") {
+                        schema[element.name].type = "String";
+                    }
+                    schema[element.name].default = element.default;
+                }
+                if (element.dataType === 'Menu') {
+                    if (element.dataSubType === "number") {
+                        schema[element.name].type = "Number";
+                    }
+                    if (element.dataSubType === "text") {
+                        schema[element.name].type = "String";
+                    }
+                    schema[element.name].default = element.default;
+                }
+
+            }
+            if (element.field_type == "Collection") {
+                schema[element.name] = {
+                    type: "mongoose.Schema.Types.ObjectId",
+                    ref: element.reference
+                }
+            }
+        })
+        console.log(schemaName + ' - ' + JSON.stringify(schema, null, 2));
+        console.log('1'+JSON.stringify(schema, null, 2));
+
+        // let mySchema = new Schema(schema);
+        // let testM = mongoose.model(schemaName, mySchema);
+        // console.log(schemaName + ' 2- ' + JSON.stringify(testM.schema, null, 2));
+        // core.create({}, function (error, cresults) {
+        //     if (error) console.log(error)
+        //     else console.log(cresults)
+        //
+        //     testM.create(
+        //         {
+        //             due_date:new Date(),
+        //             core: cresults,
+        //             number: new Date()
+        //         }, function (error, results) {
+        //             if (error) console.log(error)
+        //             else console.log(results)
+        //         })
+        // })
+        console.log('Update Schema: ' + schemaName);
+        // db_collection.find({}, function (error, records) {
+        db_collection.find({coll:schemaName}, function (error, records) {
+            console.log("RES"+records + " " + records.length)
+            if (records.length == 1) {
+                records[0]._schema = JSON.stringify(schema, null, 2);
+                // records[0].mongo_schema = JSON.stringify(testM.schema, null, 2);
+
+                db_collection.update({_id: records[0]._id},records[0], function (error, results) {
+                    if (error) console.log(error)
+                    else console.log(results)
+                    console.log('Updated Schema: '+schema);
+                })
+            }
+        });
+
+        // testM.find({}, function (error, results) {
+        //     if (error) console.log(error)
+        //     else console.log("REC:" + JSON.stringify(results[0], null, 2))
+        // }).populate(populate).sort({_id:1})
+
+    }).sort({level: 1})
+}
+
+function load_collections() {
+    let schema = "db_collection";
+    let collections = [
+        {coll:"dictionary", label: "Dictionary", platform: true}
+        ,{coll:"db_collection", label: "Collection", platform: true}
+        ,{coll:"ListLayout", label: "ListLayout", platform: true}
+        ,{coll:"FormLayout", label: "FormLayout", platform: true}
+        ,{coll:"core", label: "Core Fields", platform: true}
+        ,{coll:"user", label: "User"}
+        ,{coll:"task", label: "Task"}
+    ]
+    db_collection.remove({}, function (error, results) {
+        if (error) console.log("ERR" + error);
+        console.log(JSON.stringify(results));
+
+        collections.forEach(function (collection) {
+            db_collection.create(collection, function (error, record) {
+                if (error) console.log("ERR" + error);
+                console.log(JSON.stringify(record));
+                try {
+                    createSchema(record.coll)
+                } catch (e) {
+                    console.log("createSchema" + e);
+                }
+            })
+        })
+    })
+
+}
+
+function load_dictionary() {
+    let schema = "dictionary";
+
+    let menus = [
+        {
+            coll:"dictionary", field: "field_type",
+            menus:[
+                {label:"Field", value:"Field", order:1},
+                {label:"Collection", value:"Collection", order:2},
+            ]
+        },
+        {
+            coll:"task", field: "approval_requested",
+            menus:[
+                {label:"Not Requested", value:"not_requested", order:1},
+                {label:"Requested", value:"requested", order:2},
+                {label:"Approved", value:"approved", order:3},
+                {label:"Declined", value:"declined", order:4}
+            ]
+        }
+    ]
+
+    let dics = [
+        { coll: "task", dataType: "Text",        dataSubType: "datetime", reference: "",         default: "", display: false,  name: "due_date", label: "Due date"},
+        { coll: "task", dataType: "Collection",  dataSubType: "",         reference: "core",     default: "", display: false, name: "core",   label: "CORE", field_type: "Collection"},
+
+        { coll: "task", dataType: "Checkbox",    dataSubType: "",         reference: "",         default: "", display: false, name: "active",   label: "Active"},
+        { coll: "task", dataType: "Checkbox",    dataSubType: "",         reference: "",         default: "0", display: false, name: "approved",   label: "Approved"},
+
+        { coll: "task", dataType: "Text",        dataSubType: "text",     reference: "",         default: "", display: false, name: "number",   label: "Number"},
+        { coll: "task", dataType: "Text",        dataSubType: "number",   reference: "",         default: "4", display: false, name: "priority",   label: "Priority"},
+
+        { coll: "task", dataType: "Menu",        dataSubType: "text",     reference: "",         default: "not_requested", display: false, name: "approval_requested",   label: "Approval requested"},
+
+        { coll: "task", dataType: "Text",        dataSubType: "datetime", reference: "",         default: "", display: false, readonly: true, name: "core.created", label: "Created"},
+        { coll: "task", dataType: "Text",        dataSubType: "datetime", reference: "",         default: "", display: false, readonly: true, name: "core.updated", label: "Updated"},
+        { coll: "task", dataType: "Reference",   dataSubType: "",           reference: "user",   default: "", display: false, readonly: true, name: "core.updatedBy", label: "Updated by"},
+
+
+        { dataType : "Text", dataSubType: "datetime", reference: "",        default: "", display: false, coll: "user", name: "created", label: "Created"},
+        { dataType: "Text", dataSubType: "datetime", reference: "",        default: "", display: false, coll: "user", name: "updated", label: "Updated"},
+        { dataType: "Text", dataSubType: "datetime", reference: "",        default: "", display: false, coll: "user", name: "createdBy", label: "Created by" },
+        { dataType: "Text", dataSubType: "datetime", reference: "",        default: "", display: false, coll: "user", name: "updatedBy", label: "Updated by"},
+        { dataType: "Text", dataSubType: "text",     reference: "",        default: "", display: false, coll: "user", name: "domain", label: "Domain"},
+        { dataType: "Text", dataSubType: "text",     reference: "",        default: "", display: false, coll: "user", name: "class_name", label: "Class"},
+
+        { dataType: "Text", dataSubType: "text",     reference: "",        default: "", display: false, coll: "user", name: "user_name", label: "Login ID"},
+        { dataType: "Text", dataSubType: "text",     reference: "",        default: "", display: false, coll: "user", name: "name", label: "Name"},
+        { dataType: "Text", dataSubType: "text",     reference: "",        default: "", display: false, coll: "user", name: "first_name", label: "First name"},
+        { dataType: "Text", dataSubType: "text",     reference: "",        default: "", display: false, coll: "user", name: "last_name", label: "Last name"},
+        { dataType: "Text", dataSubType: "text",     reference: "",        default: "", display: false, coll: "user", name: "user_type", label: "User type"},
+        { dataType: "Text", dataSubType: "text",     reference: "",        default: "", display: false, coll: "user", name: "email", label: "Email"},
+        { dataType: "Checkbox", dataSubType: "",     reference: "",        default: "", display: false, coll: "user", name: "active", label: "Active"},
+
+
+        { dataType : "Text", dataSubType: "datetime", reference: "",        default: "", display: false, coll: "core", name: "created", label: "Created"},
+        { dataType: "Text", dataSubType: "datetime", reference: "",        default: "", display: false, coll: "core", name: "updated", label: "Updated"},
+        { dataType: "Text", dataSubType: "datetime", reference: "user",    default: "", display: false, coll: "core", name: "createdBy", label: "Created by", field_type: "Collection" },
+        { dataType: "Text", dataSubType: "datetime", reference: "user",    default: "", display: false, coll: "core", name: "updatedBy", label: "Updated by", field_type: "Collection"},
+        { dataType: "Text", dataSubType: "text",     reference: "",        default: "", display: false, coll: "core", name: "domain", label: "Domain"},
+        { dataType: "Text", dataSubType: "text",     reference: "",        default: "", display: false, coll: "core", name: "class_name", label: "Class"},
+
+        { dataType: "Text", dataSubType: "text", reference: "",    default: "", display: false, coll: "db_collection", name: "label", label: "Collection"},
+        { dataType: "Text", dataSubType: "text", reference: "",    default: "", display: false, coll: "db_collection", name: "coll", label: "Name"},
+        { dataType: "JSON", dataSubType: "text", reference: "",    default: "", display: false, coll: "db_collection", name: "element_path", label: "Hierarchy"},
+        { dataType: "JSON", dataSubType: "text", reference: "",    default: "", display: false, coll: "db_collection", name: "_schema", label: "Schema"},
+        { dataType: "JSON", dataSubType: "text", reference: "",    default: "", display: false, coll: "db_collection", name: "mongo_schema", label: "Mongo schema"},
+
+        { dataType: "Text", dataSubType: "text", reference: "",    default: "", display: false, coll: "dictionary", name: "name", label: "Name"},
+        { dataType: "Text", dataSubType: "text", reference: "",    default: "", display: false, coll: "dictionary", name: "coll", label: "Coll"},
+        { dataType: "Text", dataSubType: "text", reference: "",    default: "", display: false, coll: "dictionary", name: "reference", label: "Reference"},
+        { dataType: "Text", dataSubType: "text", reference: "",    default: "", display: false, coll: "dictionary", name: "dataSubType", label: "DataSubType"},
+        { dataType: "Text", dataSubType: "number", reference: "",  default: "", display: false, coll: "dictionary", name: "order", label: "Order"},
+        { dataType: "Text", dataSubType: "text", reference: "",    default: "", display: false, coll: "dictionary", name: "label", label: "Label"},
+        { dataType: "Text", dataSubType: "text", reference: "",    default: "", display: false, coll: "dictionary", name: "dataType", label: "DataType"},
+        { dataType: "Text", dataSubType: "text", reference: "",    default: "", display: false, coll: "dictionary", name: "default", label: "Default"},
+        { dataType: "Menu", dataSubType: "text", reference: "",    default: "", display: false, coll: "dictionary", name: "field_type", label: "Field type", order: 1}
+    ]
+
+    FormMenu.remove({}, function (error, results) {
+        if (error) console.log("ERR" + error);
+        console.log(JSON.stringify(results));
+
+        menus.forEach(function (menu) {
+            FormMenu.create(menu, function (error, record) {
+                if (error) console.log("ERR" + error);
+                console.log("FormMenu"+JSON.stringify(record,null,2));
+            })
+        })
+    })
+
+    dictionary.remove({}, function (error, results) {
+        if (error) console.log("ERR" + error);
+        console.log(JSON.stringify(results));
+
+        dics.forEach(function (dic) {
+            dictionary.create(dic, function (error, record) {
+                if (error) console.log("ERR" + error);
+                console.log(JSON.stringify(record));
+
+            })
+        })
+    })
+
+}
 
 function getDictionary() {
     console.log("dic start");
@@ -61,9 +288,9 @@ function getDictionary() {
     console.log("dic end");
 }
 
-function getListLayout() {
-    ListLayout.remove({coll: "task"}, function (error) {
-        dictionary.find({coll:'task'}, function (error, docs) {
+function defaultListLayout(schema) {
+    ListLayout.remove({coll: schema}, function (error) {
+        dictionary.find({coll:schema}, function (error, docs) {
             if (error) console.log("ERR" + error);
 
             let f = [];
@@ -71,76 +298,36 @@ function getListLayout() {
                 // delete field._id
                 delete field['__v']
                 f.push({order:f.length+1,ref:field._id, active:f.length>9?false:true})
-                console.log("ListLayout2342: " + field._id);
-                console.log("ListLayout2342: " + JSON.stringify(field, null, 4));
+
             })
-            console.log("ListLayout234: " + JSON.stringify(f, null, 4));
-            ListLayout.create({coll:'task', fields:f})
+            ListLayout.create({coll:schema, fields:f})
         });
-
-
     })
-
 }
 
-function getFormLayout() {
-    FormLayout.remove({coll: "task"}, function (error) {
-        dictionary.find({coll:'task'}, function (error, docs) {
+function defaultFormLayout(schema) {
+    FormLayout.remove({coll: schema}, function (error) {
+        dictionary.find({coll:schema}, function (error, docs) {
             if (error) console.log("ERR" + error);
             console.log("FormLayout: " + JSON.stringify(docs, null, 4));
-            let f1 = [];
-            let f2 = [];
-            let f3 = [];
-            let f4 = [];
-            let f8 = [];
-            let f9 = [];
+            let f = [];
             docs.forEach(function (field) {
                 // console.log("FormLayout1: " + JSON.stringify(field, null, 4));
-                if (field.order == 1)
-                    f1.push(field._id)
-                if (field.order == 2)
-                    f2.push(field._id)
-                if (field.order == 3)
-                    f3.push(field._id)
-                if (field.order == 4)
-                    f4.push(field._id)
-                if (field.order == 8)
-                    f8.push(field._id)
-                if (field.order == 9)
-                    f8.push(field._id)
+                f.push(field._id)
             })
 
-            let tsections2 = [
-                {header:"Assignment", fields:f2}
-                ,{header:"Core", fields:f3}
+            let tsections = [
+                {header:"Default", fields:f}
             ]
 
-            let tsections1 = [
-                {header:"Details", fields:f1},
-                {header:"Extra", fields:f4}
-            ]
-
-            let tsections3 = [
-                {header:"Details", fields:f8}
-            ]
-
-            let tcolumns1 = [
-                {sections:tsections1},
-                {sections:tsections2}
-            ];
-            let tcolumns2 = [
-                {sections:tsections3}
+            let tcolumns = [
+                {sections:tsections}
             ];
 
-            let rows = [{columns:tcolumns1},{columns:tcolumns2}]
-//, style:{width: (100 / tcolumns1.length) + "%"}
-            FormLayout.create({coll:'task', rows:rows})
+            let rows = [{columns:tcolumns}]
+            FormLayout.create({coll:schema, rows:rows})
         });
-
-
     })
-
-
 }
 
 function getOtherStuff() {
@@ -276,25 +463,46 @@ db.once('open', function () {
     // let schema = 'dictionary'
     let schema = 'dictionary'
 
-    dictionary.remove({coll:schema}, function(error, docs) {
-        if (error) console.log("ERR" + error);
-        console.log("dictionary: " + JSON.stringify(docs, null, 4));
-    })
-    ListLayout.remove({coll:schema}, function(error, docs) {
-        if (error) console.log("ERR" + error);
-        console.log("ListLayout: " + JSON.stringify(docs, null, 4));
-    })
-    FormLayout.remove({coll:schema}, function(error, docs) {
-        if (error) console.log("ERR" + error);
-        console.log("FormLayout: " + JSON.stringify(docs, null, 4));
-    })
+    setTimeout(function() {
+        load_collections();
+
+    }, 2000)
+
+    load_dictionary();
 
     setTimeout(function() {
-        genDic(schema)
-    }, 2000)
-    setTimeout(function() {
-        genDic2(schema)
+        db_collection.find({}, function(error, results) {
+            results.forEach(function(coll) {
+                console.log(coll.coll)
+                defaultFormLayout(coll.coll);
+                defaultListLayout(coll.coll);
+            })
+        })
+
     }, 4000)
+
+
+
+
+    // dictionary.remove({coll:schema}, function(error, docs) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log("dictionary: " + JSON.stringify(docs, null, 4));
+    // })
+    // ListLayout.remove({coll:schema}, function(error, docs) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log("ListLayout: " + JSON.stringify(docs, null, 4));
+    // })
+    // FormLayout.remove({coll:schema}, function(error, docs) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log("FormLayout: " + JSON.stringify(docs, null, 4));
+    // })
+    //
+    // setTimeout(function() {
+    //     genDic(schema)
+    // }, 2000)
+    // setTimeout(function() {
+    //     genDic2(schema)
+    // }, 4000)
 
     setTimeout(function() {
         mongoose.connection.close()

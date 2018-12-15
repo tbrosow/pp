@@ -7,8 +7,9 @@ var FormLayout = require('./FormLayout');
 var FormMenu = require('./FormMenu');
 var group = require('./group');
 let sequence = require('./sequence')
-var task = require('./core');
-var task = require('./task');
+var core = require('./core');
+// var task = require('./task');
+var db_collection = require('../db/db');
 var dictionary = require('./dictionary');
 var _ = require('lodash');
 
@@ -22,14 +23,82 @@ router.options
 // });
 
 let populate = [
-    {path:'sys', schema:'core'},
+    {path:'core', schema:'core'},
     {path: 'sys', populate: { path: 'createdBy' }, schema:'user'},
     {path: 'sys', populate: { path: 'updatedBy' }, schema:'user'}
 ];
+let models = {};
+
+console.log("XXXX0 Model:111111 " );
+
+
+
+function setSchema(s, schemaName) {
+    let schema = {};
+    _.forEach(s, function(value, key) {
+        console.log("ATTR: " + key + " " + JSON.stringify(value));
+
+
+        if (_.has(value.options, 'ref')) {
+            schema[key] = {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: value.options.ref
+            };
+        }
+        if (value.type === "mongoose.Schema.Types.ObjectId") {
+            schema[key] = {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: value.ref
+            };
+        }
+        if (value.type === "Date") {
+            schema[key] = {
+                type: Date
+            };
+        }
+        if (value.type === "Boolean") {
+            schema[key] = {
+                type: Boolean
+            };
+        }
+        if (value.type === "Number") {
+            schema[key] = {
+                type: Number
+            };
+        }
+        if (value.type === "String") {
+            schema[key] = {
+                type: String
+            };
+        }
+        if (value.type === "String") {
+            schema[key] = {
+                type: String
+            };
+        }
+        if (_.has(value, 'default')) {
+            schema[key].default = value.default;
+        }
+    });
+
+    console.log("schema " + JSON.stringify(schema));
+
+    var myModel = mongoose.model(schemaName, schema);
+    console.log("setSchema Model: " + (myModel));
+    myModel.create({'number':'1111'}, function (error, record) {
+        if (error) console.log(error)
+        console.log("Collection: " + record);
+    });
+
+    models[schemaName] = schema;
+    console.log("setSchema Models: " + JSON.stringify(models));
+    return myModel;
+}
+
 
 router.get('/query', function (req, res, next) {
 
-    console.log("/query collection: [ " + req.query.collection + "] params: " + req.query.query)
+    var Schema = mongoose.Schema;
 
     let limit = parseInt(req.query.limit) || 1000;
     let skip = parseInt(req.query.skip) || 0;
@@ -70,26 +139,70 @@ router.get('/query', function (req, res, next) {
     }
 
     console.log("/query: " + JSON.stringify(query, null, 4))
-    if (req.query.collection) {
-        mongoose.model(req.query.collection).count(query, function(error, count) {
-            mongoose.model(req.query.collection).find(query, function (error, records) {
-                if (error) {
-                    console.log(error)
-                    res.send({error: true, msg: error})
+
+    let myModel;
+    console.log("XXXX2 Models: " + JSON.stringify(models));
+
+    console.log("/query collection: [" + req.query.collection + "] params: " + req.query.query)
+    let schemaName = req.query.collection;
+
+    db_collection.find({coll:req.query.collection}, function (error, records) {
+        if (error) console.log(error)
+        console.log("Collection: " + records);
+        if (records.length == 1) {
+            if (_.has(models, req.query.collection)) {
+                console.log("HAS SCHEMA");
+
+                myModel = mongoose.model(schemaName);
+                console.log("XXXXX0 Model: " + (myModel));
+
+
+            } else {
+
+                if (records[0].coll == "db_collection" || records[0].coll == "dictionary") {
+                    console.log("NO SCHEMA - use Schema: db_collection");
+                    myModel = db_collection;
                 } else {
-
-                    console.log("/query: " + records.length + " " + req.query.collection)
-                    console.log("/query: " + JSON.stringify(records, null, 2))
-                    res.send({count:count, records: records})
+                    console.log("NO SCHEMA - load Schema: " + records[0]._schema);
+                    myModel = setSchema(JSON.parse(records[0]._schema), schemaName);
                 }
-            })
-                .limit(limit).skip(skip)
-                .populate(populate)
-        })
+            }
 
-    } else {
-        res.send({error: true})
-    }
+            try {
+                if (req.query.collection) {
+                    console.log(schemaName + ' myModel' + JSON.stringify(myModel.schema.tree, null, 2));
+                    core.create({}, function (error, record) {
+                        myModel.create({core:record,number:new Date()})
+                    })
+
+                    myModel.count(query, function (error, count) {
+                        console.log(error)
+                        myModel.find(query, function (error, records) {
+                            if (error) {
+                                console.log(error)
+                                res.send({error: true, msg: error})
+                            } else {
+
+                                console.log("/query: " + records.length + " " + req.query.collection)
+                                console.log("/query: " + JSON.stringify(records, null, 2))
+                                res.send({count: count, records: records})
+                            }
+                        })
+                        .limit(limit).skip(skip)
+                        .populate(populate)
+                    })
+                } else {
+                    res.send({error: true})
+                }
+            } catch (e) {
+                console.log(e)
+            }
+
+
+        }
+    })
+
+
 });
 
 router.put('/formlayout', function (req, res, next) {
@@ -103,6 +216,163 @@ router.put('/formlayout', function (req, res, next) {
             res.send({status:"OK", record})
         }
     })
+});
+
+function createSchema(schemaName) {
+    let schema = {};
+
+    dictionary.find({coll:schemaName}, function (error, records) {
+        if (error) console.log(error)
+        console.log(records)
+        records.forEach(function(element) {
+            if (element.field_type == "Field") {
+                schema[element.name] = {
+                    type: String,
+                    default: "DD"
+                }
+            }
+            if (element.field_type == "Collection") {
+                schema[element.name] = {}
+            }
+        })
+        db_collection.find({coll:schemaName}, function (error, records) {
+            if (error) console.log(error)
+            console.log("Collection: " + records);
+            let collections = [];
+
+            if (records.length == 1) {
+                let record = records[0];
+
+                records[0].element_path.forEach(function (element) {
+                    collections.push(element.coll);
+                })
+                console.log(JSON.stringify("Coll: " + collections))
+                dictionary.find({'coll': {$in: collections}}, function (error, dictionaries) {
+                    if (error) console.log(error)
+                    // console.log(dictionaries);
+                    records[0].element_path.forEach(function (element) {
+                        console.log("ELEM " + element.element + " P: " + element.path);
+                        let obj = _.get(schema, element.path, "NONE")
+                        console.log("ELEM T:" + obj);
+                        // let obj = _.set(schema, element.path, {})
+                        dictionaries.forEach(function (dic) {
+                            if (element.coll == dic.coll) {
+                                console.log("! " + JSON.stringify(schema, null, 4))
+                                console.log(element.path + " " + element.element + " " + dic.name);
+                                console.log(element.path + "." + dic.name);
+                                obj[dic.name] = {}
+                                _.set(schema, element.path + "." + dic.name, {})
+                            }
+                        })
+                    })
+                    console.log("FINAL" + JSON.stringify(schema, null, 4))
+
+                    let col = {
+                        _schema: JSON.stringify(schema),
+                        coll: schemaName,
+                        label: record.label,
+                        element_path: record.element_path
+                    }
+
+                    console.log("FINAL" + JSON.stringify(col, null, 4))
+                    db_collection.update({_id: records[0]._id}, col, function (error, result) {
+                        if (error) console.log(error)
+                        console.log("Collection: " + result);
+                    })
+
+                })
+            }
+        }).sort({level: 1})
+
+    })
+
+}
+
+function setHierarchy(schema, name, _path, _level, _main, _arr) {
+    let path = "", level=0, main, pathArr = [];
+    let init = false;
+    if (_main) {
+        main = _main
+    } else {
+        main = schema
+        init = true;
+    }
+    if(_level) {
+        _level++;
+        level = _level;
+    } else {
+        level++;
+    }
+    if (_path)
+        path = _path
+    if (_arr)
+        pathArr = _arr
+
+    console.log("getCS: " + schema);
+    let tmpPath = path;
+
+    console.log("setHierarchy Schema1: " + schema + " Element: " + name + " level: [" + level + "]") ;
+
+    dictionary.find({coll:schema},function (error, dics) {
+        console.log(schema + " :" + dics.length)
+        dics.forEach(function (dic) {
+
+            if (dic.field_type == 'Collection') {
+                if (tmpPath != '')
+                    path = tmpPath + "." + dic.name;
+                else
+                    path = dic.name;
+                console.log("setHierarchy ADD Schema: " + main + " " + dic.reference + " Element: " + dic.name + " Path: [" + path + "]"+ " Path: [" + level + "]") ;
+                pathArr.push({element:dic.name, path:path, coll:dic.reference, level:level})
+
+                // setTimeout(function() {
+                    setHierarchy(dic.reference, dic.name, path, level, main, pathArr)
+                // }, 1000);
+            }
+
+        })
+
+    })
+    console.log("ARR " + init + " " + JSON.stringify(pathArr, null, 2))
+
+    db_collection.find({coll:main}, function (error, results) {
+        if (error) console.log(error)
+        // console.log(results)
+        if (results.length == 1) {
+            console.log("EP: " + results[0].element_path + " Path: "+ path);
+            results[0].element_path = pathArr;
+
+            console.log("EP: "+results[0]._id);
+            db_collection.update({_id:results[0]._id}, results[0], function (error, results) {
+                if (error) console.log(error)
+                console.log(results)
+            })
+
+        }
+    })
+
+    return pathArr;
+}
+
+router.put('/schema', function (req, res, next) {
+
+    try {
+        console.log("/schema: collection: [" + req.query.collection)
+
+        createSchema(req.query.collection);
+        setTimeout(function () {
+            db_collection.find({coll:req.query.collection}, function (error, results) {
+                if (results.length == 1)
+                    res.send(results[0])
+                else
+                    res.send("OK-NOTFOUND")
+            })
+        }, 1000);
+
+        // if (req.query.ids);
+    } catch (e) {
+        console.log("ERR" + e);
+    }
 });
 
 router.put('/save', function (req, res, next) {
@@ -133,6 +403,10 @@ router.put('/save', function (req, res, next) {
                 res.send({updated: false, error: error})
             } else {
                 console.log("/save: OK " + JSON.stringify(record))
+                if (req.query.collection == 'db_collection')
+                    createSchema(req.body.coll);
+                if (req.query.collection == 'dictionary')
+                    setHierarchy(req.body.coll);
                 mongoose.model(req.query.collection).find({_id: req.body._id}, function (err, results) {
                     if (error) {
                         console.log("ERR" + error);
@@ -174,6 +448,9 @@ function createRecord(req, res, next) {
             res.send({status:"FAIL", created: false, error: error})
         } else {
             console.log("/create: OK " + JSON.stringify(record))
+            if (req.query.collection == 'dictionary')
+                setHierarchy(req.body.coll);
+
             mongoose.model(req.query.collection).find({_id: record._id}, function (err, results) {
                 if (error) {
                     console.log("ERR" + error);
@@ -370,12 +647,12 @@ router.get('/dictionary', function (req, res, next) {
                     console.log("AAA000 " + idx1)
 
                     payload.form.rows.push({index: idx1, columns: []})
-                    // console.log("001 " + " --- " + JSON.stringify(docs[0].rows[idx1]))
+                    console.log("001 " + " --- " + JSON.stringify(docs[0].rows[idx1]))
                     for (let idx2 = 0; idx2 < docs[0].rows[idx1].columns.length; idx2++) {
-                        // console.log("002 " + " --- " + JSON.stringify(payload.form))
+                        console.log("002 " + " --- " + JSON.stringify(payload.form))
                         payload.form.rows[idx1].columns.push({index: idx2, sections: []})
                         for (let idx3 = 0; idx3 < docs[0].rows[idx1].columns[idx2].sections.length; idx3++) {
-                            // console.log("003 " + " --- " + JSON.stringify(payload.form))
+                            console.log("003 " + " --- " + JSON.stringify(payload.form))
                             payload.form.rows[idx1].columns[idx2].sections.push({
                                 index: idx3,
                                 header: docs[0].rows[idx1].columns[idx2].sections[idx3].header,
@@ -383,7 +660,7 @@ router.get('/dictionary', function (req, res, next) {
                             })
 
                             for (let idx4 = 0; idx4 < docs[0].rows[idx1].columns[idx2].sections[idx3].fields.length; idx4++) {
-                                // console.log("003 " + " --- " + JSON.stringify(payload.form))
+                                console.log("003 " + " --- " + JSON.stringify(payload.form))
                                 payload.dictionary.forEach(function (dic) {
                                     if (String(dic._id) == docs[0].rows[idx1].columns[idx2].sections[idx3].fields[idx4]._id) {
                                         payload.form.rows[idx1].columns[idx2].sections[idx3].fields.push(
@@ -408,6 +685,7 @@ router.get('/dictionary', function (req, res, next) {
                     }
                 }
             }
+
             ListLayout.find({coll:req.query.collection}, function (error, docs) {
                 if (docs.length < 1) {
                     console.log("AAA000 NO LIST LAYOUT")

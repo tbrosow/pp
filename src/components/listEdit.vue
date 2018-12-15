@@ -44,7 +44,10 @@
 
 <script>
     const axios = require('axios');
-    import { Eventbus } from '../eventbus.js'
+    import _ from 'lodash'
+    var debounce = require('debounce');
+
+    import { EventBus } from '../eventbus.js'
 
     export default {
         name: "listEdit",
@@ -77,7 +80,7 @@
 
                 }).then(response => (
                     // console.log("")
-                    Eventbus.$emit('LIST_RELOAD',{collection:this.collection})
+                    EventBus.$emit('LIST_RELOAD',{collection:this.collection})
                 ));
 
 

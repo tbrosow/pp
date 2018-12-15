@@ -34,35 +34,16 @@
         </b-alert>
 
         <!-- FORM -->
+        <b-alert show>Admin Console
+        <div>
+            <b-link class="btn" style="border-color: #28a745;" :to="{ path: '/fb?col='+collection}" replace>Form Builder</b-link>
+            <b-link class="btn" style="border-color: #28a745;" :to="{ path: linkDictionary}" replace>Dictionary</b-link>
+            <button v-if="curRecord._id && collection=='db_collection'" v-on:click="updateSchema" class="btn btn-outline-success">Update Schema</button>
+        </div>
+        </b-alert>
+
         <b-alert show>Data View</b-alert>
 
-        <!--<vue-bootstrap-typeahead-->
-                <!--class="mb-4"-->
-                <!--v-model="query2"-->
-                <!--:data="users"-->
-                <!--:serializer="item => item.login"-->
-                <!--@hit="selectedUser = $event"-->
-                <!--placeholder=""-->
-                <!--ref="townTypeahead"-->
-
-        <!--/>-->
-
-        <!--{{testlist}}-->
-        <!--<div v-for="(column, index) in testlist" class="column">-->
-            <!--{{column.name}} {{index}}-->
-            <!--<vue-bootstrap-typeahead-->
-                    <!--class="mb-4"-->
-                    <!--v-model="query2"-->
-                    <!--:data="users"-->
-                    <!--:serializer="item => item.login"-->
-                    <!--@hit="selectedUser = $event"-->
-                    <!--placeholder=""-->
-                    <!--ref="refer"-->
-
-            <!--/>-->
-        <!--</div>-->
-        <!--{{testlist}}-->
-        <!--, style:{width: (100 / tcolumns1.length) + "%"}-->
 
         <div v-if="curRecord._id || newRec" id="" class="detailView">
 
@@ -107,10 +88,14 @@
 <!--s-->
                                 <!--</b-form-checkbox>-->
                                 <!--<b-form-select v-model="curRecord[field.name]" :options="opt_boolean" class="mb-3" />-->
-                                <b-form-input v-if="field.dataType=='Text'" :type="field.dataSubType" :readonly="field.readonly" :id="field.name+field._id" v-model="curRecord[field.name]" size="sm" v-bind:placeholder="errorInfo[field.name]"></b-form-input>
+                                <b-form-input v-if="field.dataType=='Text'" :type="field.dataSubType" :readonly="field.readonly" :id="field.name" @input="setValue(field.name, $event)" :value="getValue(curRecord, field.name)" size="sm" v-bind:placeholder="errorInfo[field.name]"></b-form-input>
+                                <!--<b-form-input v-if="field.dataType=='Text'" :type="field.dataSubType" :readonly="field.readonly" :id="field.name" v-on:change="setValue(this, field.name)" :value="getValue(curRecord, field.name)" size="sm" v-bind:placeholder="errorInfo[field.name]"></b-form-input>-->
                                 <b-form-input v-if="field.dataType=='Number'" :type="field.dataSubType" :readonly="field.readonly" :id="field.name+field._id" v-model="curRecord[field.name]" size="sm" v-bind:placeholder="errorInfo[field.name]"></b-form-input>
-                                <b-form-input v-if="field.dataType=='SYSTEM'" :type="field.dataSubType" readonly :id="field.name+field._id" :value="getSystemValue(curRecord, field.name)" size="sm" v-bind:placeholder="errorInfo[field.name]"></b-form-input>
-
+                                <b-form-input v-if="field.dataType=='SYSTEM'" :type="field.dataSubType" readonly :id="field.name" :value="getSystemValue(curRecord, field.name)" size="sm" v-bind:placeholder="errorInfo[field.name]"></b-form-input>
+                                <div class = "DIV_JSON" v-if="field.dataType=='JSON'">
+                                    <!--<vue-json-pretty :data="JSON.parse(curRecord[field.name])"></vue-json-pretty>-->
+                                    <vue-json-pretty :data="getJSON(curRecord[field.name])"></vue-json-pretty>
+                                </div>
 
 
                                 <b-form-textarea v-if="field.dataType=='TextArea'" rows=4 :type="field.dataSubType" :readonly="field.readonly" :id="field.name+field._id" v-model="curRecord[field.name]" size="sm" v-bind:placeholder="errorInfo[field.name]"></b-form-textarea>
@@ -204,6 +189,7 @@
         <b-btn v-b-toggle.menu variant="primary">Menu</b-btn>
         <b-btn v-b-toggle.items variant="primary">Records</b-btn>
         <b-btn v-b-toggle.ref variant="primary">Ref Field List</b-btn>
+        <b-btn v-b-toggle.miscellaneous variant="primary">Miscellaneous</b-btn>
 
         <b-collapse id="curRecord" class="mt-2">
             <h5>curRecord</h5>
@@ -233,6 +219,12 @@
             <h5>Records</h5>
             <vue-json-pretty :data="refFieldList"></vue-json-pretty>
         </b-collapse>
+        <b-collapse id="miscellaneous" class="mt-2">
+            <h5>Miscellaneous</h5>
+            QueryText: {{ queryText }}
+            <br/>Query:
+            <vue-json-pretty :data="query"></vue-json-pretty>
+        </b-collapse>
 
     </div>
 </template>
@@ -249,6 +241,7 @@
     import { EventBus } from '../eventbus.js'
     // import coolSelect  from 'vue-cool-select'
     // import SwitchTheme from './SwitchTheme.vue'
+    import $ from 'jquery'
     import VueBootstrapTypeahead from 'vue-bootstrap-typeahead'
     import _ from 'lodash'
     import VueJsonPretty from 'vue-json-pretty'
@@ -297,14 +290,17 @@
                 opt_boolean: [{ value: true, text: 'Yes' },{ value: false, text: 'No' }],
                 name:"statistics",
                 collection: "",
+
                 counter:0,
-                items: { message:[{_id:1234}]},
+                items: { },
                 query: {},
                 queryText: "",
                 records: 0,
                 curRecord: {},
                 newRec: false,
-                errorInfo: {}
+                errorInfo: {},
+
+                linkDictionary: ""
             }
         },
         watch: {
@@ -358,6 +354,15 @@
 
             if (this.$route.query.col) {
                 this.collection = this.$route.query.col
+                this.linkDictionary = "list?col=dictionary&query=%7B\"coll\"%3A\"" + this.collection + "\"%7D";
+            }
+            if (this.$route.query.query) {
+                this.queryText = decodeURIComponent(this.$route.query.query);
+                try {
+                    this.query = JSON.parse(decodeURIComponent(this.queryText));
+                } catch (e) {
+                    this.setMessage('error', 'Error parsing Query ' + this.queryText + "<br/>" + e)
+                }
             }
 
             EventBus.$on("LIST_RELOAD", data => {
@@ -373,11 +378,6 @@
                 }).then(response => (
                     this.listLayout = response.data.records[0])
                 );
-
-            })
-            EventBus.$on("XXX", data => {
-                console.log("EVENT XXX received");
-
 
             })
 
@@ -446,65 +446,49 @@
                 }
             })
             .then(response => (
-                this.parseDictionary(response),
-                    this.search()
-            ))
-            EventBus.$emit('XXX',{})
-            //
+                this.parseDictionary(response)
 
-            // console.log("LOAD LIST LAYOUT")
-            // axios({
-            //     method:'get',
-            //     url:'http://localhost:8089/query',
-            //     params: {
-            //         collection: "ListLayout",
-            //         query: JSON.stringify({coll:this.collection})
-            //     }
-            //
-            // }).then(response => (
-            //     // console.log("AJAX RESP: " + JSON.stringify(response)),
-            //     this.listLayout = response.data.records[0])
-            // );
-            //
-            // console.log("LOAD FIELD LIST")
-            // axios({
-            //     method:'get',
-            //     url:'http://localhost:8089/query',
-            //     params: {
-            //         collection: "dictionary",
-            //         query: JSON.stringify({coll:this.collection})
-            //     }
-            //
-            // }).then(response => (
-            //     // console.log("AJAX RESP: " + JSON.stringify(response)),
-            //     this.fieldlist = response.data.records)
-            // );
-            //
-            // console.log("LOAD MENU")
-            // axios({
-            //     method:'get',
-            //     url:'http://localhost:8089/query',
-            //     params: {
-            //         collection: "Menu",
-            //         query: JSON.stringify({coll:this.collection})
-            //     }
-            // })
-            // .then(response => (
-            //     this.parseFormMenu(response)
-            // ))
-            // .then(response => {
-            //
-            // //
-            // //
-            // });
+            )).then(response => (
+                this.search()
+            ))
+
+
         },
         computed: {
        },
         methods: {
             // UI FUNCTIONS
+            setMessage(_type, _text) {
+                console.log("setMessage " + new Date());
+                if (_type == 'success') {
+                    this.alert.success.show = true;
+                    this.alert.success.text = _text;
+                    setTimeout(function() {EventBus.$emit('CLEAR_ALARM',{alarm:"success"})}, 4000)
+                }
+                if (_type == 'warning') {
+                    this.alert.warning.show = true;
+                    this.alert.warning.text = _text;
+                    setTimeout(function() {EventBus.$emit('CLEAR_ALARM',{alarm:"warning"})}, 8000)
+                }
+                if (_type == 'error') {
+                    this.alert.error.show = true;
+                    this.alert.error.text = _text;
+                    setTimeout(function() {EventBus.$emit('CLEAR_ALARM',{alarm:"error"})}, 12000)
+                }
+            },
 
+            getJSON: function(json) {
+                console.log("IA:" + _.isArray(json))
+                if (_.isString(json)) {
+                    return JSON.parse(json);
+                } else if (_.isArray(json)) {
+                        return json;
+                } else {
+                    return json;
+                }
+            },
             getSystemValue: function(item, fn) {
-                    console.log("getSystemValue: " + fn + " " + JSON.stringify(item.sys[fn]))
+                console.log("getSystemValue: " + fn + " " + JSON.stringify(item))
                 let dv = 'none';
                 if (fn == 'createdBy' || fn == 'updatedBy')
                     dv = ""+_.get(item, 'sys.['+fn+'].name','s2')
@@ -512,16 +496,45 @@
                     dv = String(_.get(item, 'sys.['+fn+']','s3')).replace(/T/," ").replace(/Z/," ").split(".")[0]
                 return dv
             },
+            getValue: function(item, fn) {
+                console.log("getValue: " + fn + " " + JSON.stringify(item))
+
+                var val = _.get(this.curRecord, fn, 'nf')
+
+
+                return val;
+            },
+            setValue: function( fn, value ) {
+
+                console.log("setValue: fn" + fn)
+                console.log("setValue: v" + JSON.stringify(value))
+                _.set(this.curRecord, fn, value)
+
+                // var val = _.get(this.curRecord, type, 'nf')
+
+                // console.log('1 '+$('#'+fn).val())
+                // console.log($('#core.updated').val())
+                // console.log($('#number').val())
+                //
+                //
+                // var val = _.get(this.curRecord, fn, 'nf')
+                //console.log("setValue: " + val);
+
+                // return val;
+            },
             getReferenceValue: function(item, fn) {
                 console.log("getReferenceValue: " + fn + " " + JSON.stringify(item))
                 let dv = _.get(item[fn],'name','')
                 return dv
             },
             getMenuValue: function(item, fn) {
-                console.log("getMenuValue: " + fn + " " + JSON.stringify(item))
-
-                let dv = this.menu[fn].menu[_.findIndex(this.menu[fn].menu,{value:item[fn]})].text
-                return dv
+                console.log("getMenuValue: " + fn + " " + item[fn])
+                try {
+                    let dv = this.menu[fn].menu[_.findIndex(this.menu[fn].menu, {value: item[fn]})].text
+                    return dv
+                } catch (e) {
+                    return "invalid"
+                }
             },
 
             getRefData: function(d) {
@@ -558,6 +571,24 @@
 
                 ))
             }, 500),
+
+            updateSchema: function() {
+                axios({
+                    data: this.curRecord,
+                    method:'put',
+                    baseURL: 'http://localhost:8089/',
+                    url: 'schema',
+                    params: {
+                        collection: this.collection
+                    }
+
+
+                }).then(response => (
+                    console.log("AJAX RESP: " + JSON.stringify(response)),
+                        // this.curRecord = response.data,
+                        this.updateListView()
+                ));
+            },
 
             initRecord: function() {
                 this.curRecord = {}
@@ -825,6 +856,7 @@
                 let paging = {skip:0, limit: this.rowsPerPage}
                 if (_paging)
                     paging = _paging
+                console.log("SEARCH QUERY2:" + JSON.stringify(this.listLayout))
                 axios({
                     method:'get',
                     url:'http://localhost:8089/query',
@@ -838,7 +870,6 @@
                     }
 
                 }).then(response => (
-                    EventBus.$emit('LIST_RELOAD2',{collection:this.collection}),
                     console.log("RESP"+JSON.stringify(response)),
                         this.items = response.data.records,
                         this.records = response.data.count
@@ -865,6 +896,7 @@
                         t.refField[field.name] = "";
                     }
                 })
+                console.log("parsedDictionary");
             }
         }
     }
@@ -877,6 +909,10 @@
         margin: 2em;
     }
 
+    .DIV_JSON {
+        background: aliceblue;
+        padding: 1em;
+    }
     .div50 {
         float: left;
         width: 50%;

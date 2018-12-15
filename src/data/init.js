@@ -88,58 +88,30 @@ function getListLayout() {
 
 }
 
-function getFormLayout() {
-    FormLayout.remove({coll: "task"}, function (error) {
-        dictionary.find({coll:'task'}, function (error, docs) {
+function getFormLayout(schema) {
+    FormLayout.remove({coll: schema}, function (error) {
+        dictionary.find({coll:schema}, function (error, docs) {
             if (error) console.log("ERR" + error);
             console.log("FormLayout: " + JSON.stringify(docs, null, 4));
             let f1 = [];
-            let f2 = [];
-            let f3 = [];
-            let f4 = [];
-            let f8 = [];
-            let f9 = [];
+
             docs.forEach(function (field) {
                 // console.log("FormLayout1: " + JSON.stringify(field, null, 4));
-                if (field.order == 1)
-                    f1.push(field._id)
-                if (field.order == 2)
-                    f2.push(field._id)
-                if (field.order == 3)
-                    f3.push(field._id)
-                if (field.order == 4)
-                    f4.push(field._id)
-                if (field.order == 8)
-                    f8.push(field._id)
-                if (field.order == 9)
-                    f8.push(field._id)
+                f1.push(field._id)
+
             })
 
-            let tsections2 = [
-                {header:"Assignment", fields:f2}
-                ,{header:"Core", fields:f3}
-            ]
-
             let tsections1 = [
-                {header:"Details", fields:f1},
-                {header:"Extra", fields:f4}
+                {header:"Details", fields:f1}
                 ]
 
-            let tsections3 = [
-                    {header:"Details", fields:f8}
-            ]
-
             let tcolumns1 = [
-                {sections:tsections1},
-                {sections:tsections2}
-            ];
-            let tcolumns2 = [
-                {sections:tsections3}
+                {sections:tsections1}
             ];
 
-            let rows = [{columns:tcolumns1},{columns:tcolumns2}]
-//, style:{width: (100 / tcolumns1.length) + "%"}
-            FormLayout.create({coll:'task', rows:rows})
+            let rows = [{columns:tcolumns1}]
+
+            FormLayout.create({coll:schema, rows:rows})
         });
 
 
@@ -247,87 +219,93 @@ db.on('error', console.error.bind(console, 'connection error:'));
 db.once('open', function () {
 
     console.log("we're connected!");
-    console.log(core.schema.tree)
-    console.log(task.schema.tree)
+    // console.log(core.schema.tree)
+    // console.log(task.schema.tree)
+    //
+    // core.remove({}, function (error, records) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log(JSON.stringify(records))
+    // })
+    // task.remove({}, function (error, records) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log(JSON.stringify(records))
+    // })
+    // user.remove({}, function (error, records) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log(JSON.stringify(records))
+    // })
+    //
+    // console.log('removed')
 
-    core.remove({}, function (error, records) {
+    // await(getDictionary('dictionary'))
+
+
+// setTimeout(function() {
+//     await(getListLayout())
+//     console.log("getListLayout loaded");
+// }, 1000);
+
+setTimeout(function() {
+    FormLayout.remove({coll:'dictionary'}, function (error, records) {
         if (error) console.log("ERR" + error);
         console.log(JSON.stringify(records))
-    })
-    task.remove({}, function (error, records) {
-        if (error) console.log("ERR" + error);
-        console.log(JSON.stringify(records))
-    })
-    user.remove({}, function (error, records) {
-        if (error) console.log("ERR" + error);
-        console.log(JSON.stringify(records))
+        await(getFormLayout('dictionary'))
     })
 
-    console.log('removed')
-await(getDictionary())
 
-
-
-setTimeout(function() {
-    await(getListLayout())
-    console.log("getListLayout loaded");
+    console.log("getFormLayout loaded");
 }, 1000);
 
-setTimeout(function() {
-    await(getFormLayout())
-    console.log("getListLayout loaded");
-}, 1000);
-
-setTimeout(function() {
-    await(getOtherStuff())
-    console.log("getListLayout loaded");
-}, 1000);
+// setTimeout(function() {
+//     await(getOtherStuff())
+//     console.log("getListLayout loaded");
+// }, 1000);
 
 setTimeout(function() {
 
-    await(dictionary.find({}, function (error, docs) {
-        if (error) console.log("ERR" + error);
-        console.log("dictionary: " + docs.length);
-    }));
-    await(ListLayout.find({}, function (error, docs) {
-        if (error) console.log("ERR" + error);
-        console.log("ListLayout: " + docs.length);
-    }));
-
-    menu.find({}, function (error, docs) {
-        if (error) console.log("ERR" + error);
-        console.log("menu: " + docs.length);
-
-    });
-    FormLayout.find({}, function (error, docs) {
-        if (error) console.log("ERR" + error);
-        console.log("FormLayout: " + docs.length);
-
-    });
-
-    console.log(' TYPE [' + JSON.stringify(mongoose.model('task').schema.tree))
-
-    core.find({}, function (error, docs) {
-        if (error) console.log("ERR" + error);
-        console.log("core: " + docs.length);
-        console.log("core: " + JSON.stringify(docs,null,2));
-
-    }).populate([{path:'createdBy', schema:'user'}]);
-    task.find({}, function (error, docs) {
-        if (error) console.log("ERR" + error);
-        console.log("Task: " + docs.length);
-        console.log("Task: " + JSON.stringify(docs,null,2));
-
-    }).populate([
-        {path:'sys', schema:'core'},
-        {path: 'sys', populate: { path: 'createdBy' }, schema:'user'},
-        {path: 'sys', populate: { path: 'updatedBy' }, schema:'user'}
-            ]);
-    sequence.find({}, function (error, docs) {
-        if (error) console.log("ERR" + error);
-        console.log("sequence: " + docs.length);
-
-    });
+    // await(dictionary.find({}, function (error, docs) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log("dictionary: " + docs.length);
+    // }));
+    // await(ListLayout.find({}, function (error, docs) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log("ListLayout: " + docs.length);
+    // }));
+    //
+    // menu.find({}, function (error, docs) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log("menu: " + docs.length);
+    //
+    // });
+    // FormLayout.find({}, function (error, docs) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log("FormLayout: " + docs.length);
+    //
+    // });
+    //
+    // console.log(' TYPE [' + JSON.stringify(mongoose.model('task').schema.tree))
+    //
+    // core.find({}, function (error, docs) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log("core: " + docs.length);
+    //     console.log("core: " + JSON.stringify(docs,null,2));
+    //
+    // }).populate([{path:'createdBy', schema:'user'}]);
+    // task.find({}, function (error, docs) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log("Task: " + docs.length);
+    //     console.log("Task: " + JSON.stringify(docs,null,2));
+    //
+    // }).populate([
+    //     {path:'sys', schema:'core'},
+    //     {path: 'sys', populate: { path: 'createdBy' }, schema:'user'},
+    //     {path: 'sys', populate: { path: 'updatedBy' }, schema:'user'}
+    //         ]);
+    // sequence.find({}, function (error, docs) {
+    //     if (error) console.log("ERR" + error);
+    //     console.log("sequence: " + docs.length);
+    //
+    // });
 
 
     }, 2000)

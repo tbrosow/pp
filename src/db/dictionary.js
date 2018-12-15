@@ -5,6 +5,16 @@ var Schema = new mongoose.Schema({
         type: String,
         required: true
     },
+    field_type: { // Field | Reference
+        type: String,
+        default: "Field",
+        required: true
+    },
+    reference: {
+        type: String,
+        default: "",
+        required: false
+    },
     name: {
         type: String,
         required: true
@@ -17,16 +27,13 @@ var Schema = new mongoose.Schema({
     order: {
         type: Number
     },
+
     dataType: {
         type: String,
         default: "Text",
         required: true
     },
     dataSubType: {
-        type: String,
-        default: "text"
-    },
-    reference: {
         type: String,
         default: "text"
     },

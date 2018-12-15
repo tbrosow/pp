@@ -46,13 +46,15 @@ new Vue({
       <ul style="background: aquamarine">
         <li><router-link to="/">home</router-link></li>
         <li><router-link to="/list?col=task">My tasks</router-link></li>
+        <li><router-link to="/list?col=incident">My Incidents</router-link></li>
         <li><router-link to="/list?col=sequence">Number Maintenance</router-link></li>
+        <li><router-link to="/list?col=db_collection" exact v-on:click="close()">Collections</router-link></li>
         <li><router-link to="/list?col=dictionary">Dictionary</router-link></li>
+        <li><router-link to="/list?col=user">Users</router-link></li>
         <li><router-link to="/fb?col=dictionary">Form Builder</router-link></li>
         
-        <li><router-link to="/user">User</router-link></li>
       </ul>
-      <router-view class="view"></router-view>
+      <router-view :key="$route.fullPath" class="view"></router-view>
     </div>
   `
 }).$mount('#app')
